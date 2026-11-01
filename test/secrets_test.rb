@@ -66,6 +66,17 @@ class SecretsTest < Minitest::Test
     assert_equal ['{"api_key": "[secret]"}', 1], mask('{"api_key": "abc123"}')
   end
 
+  def test_emails_with_subdomains_masked
+    ["a.b@sub.example.co.jp", "x+tag@mail.example.com", "me@host.io"].each do |addr|
+      assert_equal ["to [secret] now", 1], mask("to #{addr} now")
+    end
+  end
+
+  def test_versioned_package_names_not_email
+    ["/opt/homebrew/opt/mysql@8.4/bin/mysqld_safe", "mise use -g go@1.27", "go@1.27.3", "python@3.12",
+     "node@22.1.0-rc", "pkg@1.2.3-beta"].each { |text| assert_equal [text, 0], mask(text) }
+  end
+
   def test_git_scp_remote_not_email
     assert_equal ["git clone git@github.com:foo/bar.git", 0], mask("git clone git@github.com:foo/bar.git")
     assert_equal ["to [secret]: hi", 1], mask("to ysb@example.com: hi")
@@ -139,7 +150,8 @@ class SecretsTest < Minitest::Test
   # Guards against quadratic matching; bounds are loose to avoid flakiness.
   def test_keyword_stuffed_lines_stay_linear
     ["key" * 30_000, "x.pwd." * 5_000, "token_" * 20_000, "curl " * 40_000, "mysql " * 40_000,
-     "docker login " * 20_000, "a" * 200_000].each do |text|
+     "docker login " * 20_000, "a" * 200_000,
+     "a@1." * 50_000, "a.b@" * 50_000].each do |text|
       assert_operator elapsed { mask(text) }, :<, 2.0
     end
   end

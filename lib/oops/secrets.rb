@@ -26,7 +26,9 @@ module Oops
       # limit) everything after BEGIN is masked.
       /-----BEGIN [A-Z ]*PRIVATE KEY-----.*?(?:-----END [A-Z ]*PRIVATE KEY-----|\z)/m,
       %r{\b[a-z][a-z0-9+.-]*://(?<secret>[^\s/@:]+:[^\s/@]+)@}i, # URL userinfo
-      %r{[A-Za-z0-9._%+-]+@(?>[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+)(?!:[\w~/])}, # email, not scp-style git@host:path
+      # Email. The last label must be letters, like a real TLD, so versioned
+      # names such as mysql@8.4 stay; the lookahead skips git@host:path.
+      %r{[A-Za-z0-9._%+-]+@(?>(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,})(?![A-Za-z0-9-])(?!:[\w~/])},
       # Public IPv4: not private/loopback/unspecified, and not part of a longer
       # dotted number such as a version string (1.2.3.4.5).
       Regexp.new(
