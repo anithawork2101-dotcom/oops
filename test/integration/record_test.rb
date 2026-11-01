@@ -138,7 +138,9 @@ class RecordIntegrationTest < Minitest::Test
     FileUtils.mkdir_p("#{@home}/state/oops")
     File.write("#{@home}/state/oops/sessions", "not a dir")
     spawn_recorded(BASH)
-    type("echo alive\n")
+    # The quotes keep the terminal's echo of what we typed from matching, so
+    # this waits for the shell, which starts only after the log was tried.
+    type(%(echo al""ive\n))
     wait_for(/alive/)
     statuses = Dir.glob("#{@home}/state/oops/**/*.status").map { File.read(_1) }.join
     assert_match(/recording disabled|log-error/, @out + statuses)
