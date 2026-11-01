@@ -4,6 +4,7 @@ English | [日本語](CHANGELOG.ja.md)
 
 ## Unreleased
 
+- Email masking no longer hides versioned names such as `/opt/homebrew/opt/mysql@8.4` or `go@1.27`: the last part of the domain must now be letters, like a real top-level domain ([#24](https://github.com/ysb3996-blip/oops/issues/24)).
 - `oops status` prints `recording`, `paused` or `off` on one line and exits 0 only when recording, so a prompt or script can show whether this shell is recorded.
 - `--time` option: adds the local time each command started as a `# 2026-10-31 19:30:09 +09:00` line before `$ command`, and to the `--github` summary.
 - `--output-only` option: leaves out the `$ command` line and copies only the output and `(exit N)`.
