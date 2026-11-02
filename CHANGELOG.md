@@ -5,6 +5,7 @@ English | [日本語](CHANGELOG.ja.md)
 ## Unreleased
 
 - `oops.plugin.zsh` for zsh plugin managers (antidote, zinit, Oh My Zsh, ...). It runs oops from the cloned repository, so no gem install is needed.
+- Homebrew tap: `brew install ysb3996-blip/oops/oops`. The formula runs oops with Homebrew's Ruby.
 
 ## 0.2.0 - 2026-11-01
 
