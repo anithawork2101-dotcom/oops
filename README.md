@@ -298,7 +298,7 @@ Manual checklist before a release:
 
 ## Contributing
 
-Bug reports, ideas and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md); issues labeled `good first issue` are a good place to start.
+Bug reports, ideas and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md); issues labeled `good first issue` are a good place to start. Every pull request must include the test and rubocop results and a check in a new terminal tab; see [What every pull request must include](CONTRIBUTING.md#what-every-pull-request-must-include).
 
 ## License
 
