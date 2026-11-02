@@ -31,6 +31,8 @@ The Homebrew formula runs oops with Homebrew's own Ruby, so it works even if an 
 
 Requires Ruby 3.3 or newer on macOS or Linux (WSL counts as Linux), and zsh, bash or fish. There are no runtime gem dependencies.
 
+Checked by hand on macOS in Terminal.app, iTerm2, Ghostty and the VS Code integrated terminal. If it misbehaves in another terminal, please open an issue.
+
 `gem install` puts oops into the Ruby that is active at that moment; each Ruby version has its own gems. With rbenv, asdf or mise, a tab that uses another Ruby gives a `command not found` error for `oops`, also when the shell starts. The fix that always works is to run `gem install oops-cli` again under the active Ruby (with rbenv, follow with `rbenv rehash`). Outside directories that pin a Ruby with `.ruby-version`, `.tool-versions` or `mise.toml`, you can instead set the Ruby you installed into as your global Ruby (for example `rbenv global 3.3.5`).
 
 ### With a zsh plugin manager
@@ -294,7 +296,7 @@ The tests cover formatting, secret masking, the log reader, the stream parser an
 
 Manual checklist before a release:
 
-- No marker garbage is visible in Ghostty, Terminal.app and the VS Code integrated terminal.
+- No marker garbage is visible in Ghostty, Terminal.app, iTerm2 and the VS Code integrated terminal.
 - vim, less and a full-screen terminal app keep up while you resize the window.
 - `exec zsh` in a recorded tab does not start a second recording.
 - A VS Code terminal opened with `code .` from a recorded tab is recorded on its own.
