@@ -29,7 +29,7 @@ brew install ysb3996-blip/oops/oops
 
 The Homebrew formula runs oops with Homebrew's own Ruby, so it works even if an older Ruby comes first on your `PATH`.
 
-Requires Ruby 3.3 or newer on macOS or Linux (WSL counts as Linux), and zsh or bash. There are no runtime gem dependencies.
+Requires Ruby 3.3 or newer on macOS or Linux (WSL counts as Linux), and zsh, bash or fish. There are no runtime gem dependencies.
 
 `gem install` puts oops into the Ruby that is active at that moment; each Ruby version has its own gems. With rbenv, asdf or mise, a tab that uses another Ruby gives a `command not found` error for `oops`, also when the shell starts. The fix that always works is to run `gem install oops-cli` again under the active Ruby (with rbenv, follow with `rbenv rehash`). Outside directories that pin a Ruby with `.ruby-version`, `.tool-versions` or `mise.toml`, you can instead set the Ruby you installed into as your global Ruby (for example `rbenv global 3.3.5`).
 
@@ -66,14 +66,21 @@ eval "$(oops init zsh)"    # zsh
 eval "$(oops init bash)"   # bash
 ```
 
-Then open a new tab. Existing tabs pick it up after `exec zsh` (or `exec bash`).
+For fish, add this line to `~/.config/fish/config.fish`:
+
+```fish
+oops init fish | source
+```
+
+Then open a new tab. Existing tabs pick it up after `exec zsh` (or `exec bash`, `exec fish`).
 
 Where to put the line matters:
 
 - Put it **after** whatever puts the Ruby that has oops on your `PATH` (rbenv, asdf, mise, Homebrew `shellenv`, and so on). On macOS, login shells reset `PATH`, so if the line comes first, the system Ruby 2.6 may be picked and oops will not start. If oops cannot run, your shell still starts normally, just without recording.
 - Put it **before** slow or noisy setup that you do not want to run twice (nvm, prompt themes, banners). The snippet starts your shell again under a small recorder (`oops record`, a pty relay), so anything above the line runs once in the outer shell and again in the inner one. Anything below it runs only in the inner shell.
 - With powerlevel10k, put the line **above** the instant prompt block at the top of `~/.zshrc`. The instant prompt redirects the shell's input and output while the rest of `~/.zshrc` runs, and the snippet does nothing then (it only acts on a real terminal), so oops would silently not record. If a tab is not recorded although the line is in `~/.zshrc`, run `oops doctor`: it shows `recording: no`.
-- In zsh the shell is restarted as a non-login shell, so setup that lives only in `~/.zlogin` is not applied to the recorded shell. Keep it in `~/.zprofile` or `~/.zshrc` (above the line). In bash, a login shell is restarted with `-l`.
+- In zsh the shell is restarted as a non-login shell, so setup that lives only in `~/.zlogin` is not applied to the recorded shell. Keep it in `~/.zprofile` or `~/.zshrc` (above the line). In bash, a login shell is restarted with `-l`, and in fish with `--login`.
+- fish is restarted just before its first prompt, so all of `config.fish` runs in both the outer and the recorded shell, wherever the line is. (Starting it earlier would also catch `fish -i -c` and `fish -i script.fish`, which never show a prompt and must not be restarted.)
 
 If something looks wrong, run `oops doctor`. It reports whether this tab is recorded, the shell and whether the hooks are loaded, which clipboard method will be used, the config file, the size of the session logs, and the Ruby version.
 
@@ -87,7 +94,7 @@ To turn oops off for one shell, start it with `OOPS_DISABLE=1` (for example `OOP
 | `oops 3` / `oops -n 3` | Copy the last 3 commands (oldest first) as one code block |
 | `oops err` | Copy the last command that exited non-zero, skipping over successful ones |
 | `oops err -n 2` | Copy the last 2 failed commands (oldest first), skipping over successful ones |
-| `oops init zsh` / `oops init bash` | Print the shell snippet (for `eval`) |
+| `oops init zsh` / `oops init bash` / `oops init fish` | Print the shell snippet (for `eval`, or `\| source` in fish) |
 | `oops doctor` | Diagnose recording, hooks, clipboard, config and log size |
 | `oops pause` / `oops resume` | Stop and restart recording. While paused, nothing is written to disk |
 | `oops status` | Print `recording`, `paused` or `off` on one line, for scripts and prompts |
@@ -204,9 +211,9 @@ Masking is pattern based, so it is a safety net, not a guarantee: a secret in a 
 
 ![How oops works: a recorder sits between you and your shell, every command is written to a notebook on your disk, typing oops copies the last page with secrets hidden, and you paste it anywhere](docs/how-it-works.svg)
 
-1. `oops init` prints a snippet that you `eval` from your rc file. In an interactive shell on a terminal that is not recorded yet, it restarts the shell under `oops record`.
+1. `oops init` prints a snippet that you `eval` from your rc file (`| source` in fish). In an interactive shell on a terminal that is not recorded yet, it restarts the shell under `oops record`.
 2. `oops record` is a small Ruby pty relay: it passes your keystrokes and the shell's output through untouched and forwards window resizes to the shell.
-3. Hooks in the shell (zsh `preexec`/`precmd`, bash `DEBUG` trap and `PROMPT_COMMAND`) emit invisible APC markers around each command. The relay strips them, so your terminal never sees them.
+3. Hooks in the shell (zsh `preexec`/`precmd`, bash `DEBUG` trap and `PROMPT_COMMAND`, fish `fish_preexec`/`fish_postexec` events) emit invisible APC markers around each command. The relay strips them, so your terminal never sees them.
 4. For each finished command the relay appends one JSON line (command, directory, times, exit code, raw output) to a per-tab log under `${XDG_STATE_HOME:-~/.local/state}/oops/sessions/`. Output is capped at 1 MB per command (the tail is kept). Each tab's log is capped at 50 MB: when it passes that, it is rewritten to keep only its newest commands (down to about 37 MiB). When a tab starts recording, logs of closed tabs are deleted, oldest first, until all logs together take at most 50 MB; logs of open tabs are never deleted, so several busy tabs can together use more.
 5. `oops` reads the end of the current tab's log, cleans and masks the text, builds the code block and hands it to the clipboard. Nothing is ever re-run.
 
@@ -226,16 +233,16 @@ Masking is pattern based, so it is a safety net, not a guarantee: a secret in a 
 - Output of full-screen apps (vim, less, tmux and so on) is not kept; it is replaced by `[full-screen app output omitted]`.
 - A command line that starts with a space is recorded in zsh but dropped in bash (bash does not save it to history, which is where oops reads the command).
 - bash with [bash-preexec](https://github.com/rcaloras/bash-preexec) (also behind atuin and Ghostty's bash integration): oops registers its hooks with it instead of using its own `DEBUG` trap, whichever of the two comes first in your rc file. A line that bash did not save to history (`HISTCONTROL=ignorespace`, `HISTIGNORE`) is then recorded as `(not saved in history)`, because the text of the line is read from history there. Without bash-preexec, oops records the first command of such a line instead.
-- bash in Ghostty: Ghostty adds its shell integration (prompt marks, new tabs in the same directory, titles) only to the outer shell, so the recorded shell does not get it. To add it back, put this below the oops line in `~/.bashrc` (checked with bash 3.2): `[ -n "$GHOSTTY_RESOURCES_DIR" ] && source "$GHOSTTY_RESOURCES_DIR/shell-integration/bash/ghostty.bash"`. zsh needs nothing: the snippet does it.
+- bash in Ghostty: Ghostty adds its shell integration (prompt marks, new tabs in the same directory, titles) only to the outer shell, so the recorded shell does not get it. To add it back, put this below the oops line in `~/.bashrc` (checked with bash 3.2): `[ -n "$GHOSTTY_RESOURCES_DIR" ] && source "$GHOSTTY_RESOURCES_DIR/shell-integration/bash/ghostty.bash"`. zsh and fish need nothing: the snippet does it.
 - bash: the line after a pipeline sees `PIPESTATUS` with only the last status (`false | true`, then `echo ${PIPESTATUS[*]}` prints `0`, not `1 0`), because oops's `PROMPT_COMMAND` entry runs first. `$?` and `$_` are kept. A prompt that shows pipeline statuses (starship's `pipestatus`) shows less in bash. zsh keeps `pipestatus`.
 - macOS: `pbcopy` chooses its text encoding from `LANG` / `LC_*`. If Japanese or other non-ASCII text arrives garbled, check that a UTF-8 locale is set (for example `LANG=en_US.UTF-8`), which can be missing in shells started over SSH.
-- fish and native Windows are not supported yet.
+- Native Windows is not supported yet.
 
 ## Development
 
 ### Set up your machine
 
-You need Git, Ruby 3.3 or newer, [Bundler](https://bundler.io/) (it ships with Ruby), and both zsh and bash (the end-to-end tests start real shells). macOS has zsh and bash; on Debian or Ubuntu run `sudo apt-get install zsh`.
+You need Git, Ruby 3.3 or newer, [Bundler](https://bundler.io/) (it ships with Ruby), and both zsh and bash (the end-to-end tests start real shells). macOS has zsh and bash; on Debian or Ubuntu run `sudo apt-get install zsh`. fish is optional: its end-to-end tests are skipped when it is not installed (CI installs it).
 
 ```sh
 git clone https://github.com/ysb3996-blip/oops.git
@@ -280,7 +287,7 @@ rbenv rehash                         # only with rbenv
 
 Never run `oops record` in the terminal you are working in; the tests drive it through their own pty. Try it in a new terminal tab instead. To delete the logs your experiments leave behind, see "Privacy and security".
 
-The tests cover formatting, secret masking, the log reader, the stream parser and an end-to-end run of the relay with real zsh and bash.
+The tests cover formatting, secret masking, the log reader, the stream parser and an end-to-end run of the relay with real zsh, bash and fish.
 
 Manual checklist before a release:
 

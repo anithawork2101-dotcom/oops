@@ -44,12 +44,19 @@ class CLITest < Minitest::Test
     assert_includes out.string, "PROMPT_COMMAND"
   end
 
+  def test_init_fish
+    out = StringIO.new
+    assert_equal 0, Oops::CLI.run(%w[init fish], stdout: out, stderr: StringIO.new)
+    assert_includes out.string, "fish_preexec"
+    assert_includes out.string, "set -g __oops_bin '#{File.expand_path($PROGRAM_NAME)}'"
+  end
+
   def test_init_unsupported_shell_exits_two
     out = StringIO.new
     err = StringIO.new
-    status = Oops::CLI.run(%w[init fish], stdout: out, stderr: err)
+    status = Oops::CLI.run(%w[init tcsh], stdout: out, stderr: err)
     assert_equal 2, status
-    assert_equal "oops: unsupported shell: fish (supported: zsh, bash)\n", err.string
+    assert_equal "oops: unsupported shell: tcsh (supported: zsh, bash, fish)\n", err.string
     assert_empty out.string
   end
 
@@ -67,6 +74,9 @@ class CLICopyTest < Minitest::Test
   NOT_RECORDING_BASH = "oops: not recording in this shell. Add  eval \"$(oops init bash)\"  " \
                        "to ~/.bashrc (after whatever puts oops's Ruby on PATH, as early as possible) " \
                        "and open a new tab.\n".freeze
+  NOT_RECORDING_FISH = "oops: not recording in this shell. Add  oops init fish | source  " \
+                       "to ~/.config/fish/config.fish (after whatever puts oops's Ruby on PATH, " \
+                       "as early as possible) and open a new tab.\n".freeze
 
   def setup
     @dir = Dir.mktmpdir
@@ -124,6 +134,11 @@ class CLICopyTest < Minitest::Test
   def test_not_recording_message_names_bash_for_bash_users
     env = @env.merge("OOPS_SESSION" => nil, "SHELL" => "/usr/local/bin/bash")
     assert_equal [1, "", NOT_RECORDING_BASH], run_cli("err", env: env)
+  end
+
+  def test_not_recording_message_names_fish_for_fish_users
+    env = @env.merge("OOPS_SESSION" => nil, "SHELL" => "/opt/homebrew/bin/fish")
+    assert_equal [1, "", NOT_RECORDING_FISH], run_cli(env: env)
   end
 
   def test_copies_last_and_reports

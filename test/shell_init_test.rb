@@ -13,7 +13,13 @@ class ShellInitTest < Minitest::Test
     refute_match(/\$\{[^}]*,,|\[\[ .* =~ .*\(\?|declare -A|mapfile|\$EPOCHSECONDS/, s)
   end
 
-  def test_unknown_shell_raises = assert_raises(ArgumentError) { Oops::ShellInit.snippet("fish") }
+  def test_fish_snippet_mentions_guards_events_and_marker_prefix
+    s = Oops::ShellInit.snippet("fish")
+    %w[OOPS_TTY OOPS_DISABLE fish_preexec fish_postexec is-login].each { |w| assert_includes s, w }
+    assert_includes s, "\\e_oops;start;"
+  end
+
+  def test_unknown_shell_raises = assert_raises(ArgumentError) { Oops::ShellInit.snippet("tcsh") }
 
   def test_snippets_parse
     Dir.mktmpdir do |d|
@@ -21,6 +27,8 @@ class ShellInitTest < Minitest::Test
       assert system("zsh", "-n", "#{d}/z") if system("which zsh >/dev/null")
       File.write("#{d}/b", Oops::ShellInit.snippet("bash"))
       assert system("bash", "-n", "#{d}/b")
+      File.write("#{d}/f", Oops::ShellInit.snippet("fish"))
+      assert system("fish", "-n", "#{d}/f") if system("which fish >/dev/null")
     end
   end
 
@@ -43,9 +51,20 @@ class ShellInitTest < Minitest::Test
     end
   end
 
+  # fish single quotes have no '\'' form; a quote is written \' there.
+  def test_bin_is_embedded_as_one_quoted_word_for_fish
+    skip "fish not installed" unless system("which fish >/dev/null")
+    bin = "/opt/it's a \\dir/oops"
+    s = Oops::ShellInit.snippet("fish", bin: bin)
+    refute_includes s, "__OOPS_BIN__"
+    line = s[/^\s*set -g __oops_bin .*$/]
+    out = IO.popen(["fish", "-c", "#{line}; printf %s $__oops_bin"], &:read)
+    assert_equal bin, out
+  end
+
   def test_snippets_do_nothing_when_not_interactive
-    %w[zsh bash].each do |shell|
-      next if shell == "zsh" && !system("which zsh >/dev/null")
+    %w[zsh bash fish].each do |shell|
+      next if shell != "bash" && !system("which #{shell} >/dev/null")
 
       out = IO.popen([shell, "-c", "#{Oops::ShellInit.snippet(shell, bin: '/nonexistent/oops')}\necho alive"],
                      err: %i[child out], &:read)

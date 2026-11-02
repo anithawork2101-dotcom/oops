@@ -117,8 +117,12 @@ module Oops
       path = env["OOPS_SESSION"].to_s
       return SessionLog.new(path) if !path.empty? && File.file?(path)
 
-      shell, rc = env["SHELL"].to_s.end_with?("bash") ? %w[bash ~/.bashrc] : %w[zsh ~/.zshrc]
-      raise Failure, "not recording in this shell. Add  eval \"$(oops init #{shell})\"  " \
+      line, rc = case env["SHELL"].to_s
+                 when /bash\z/ then [%(eval "$(oops init bash)"), "~/.bashrc"]
+                 when /fish\z/ then ["oops init fish | source", "~/.config/fish/config.fish"]
+                 else [%(eval "$(oops init zsh)"), "~/.zshrc"]
+                 end
+      raise Failure, "not recording in this shell. Add  #{line}  " \
                      "to #{rc} (after whatever puts oops's Ruby on PATH, as early as possible) " \
                      "and open a new tab."
     end
@@ -197,7 +201,7 @@ module Oops
       Recorder.new(args, env: env, stdin: stdin, stdout: stdout, stderr: stderr).run
     end
 
-    # `oops init zsh|bash`: prints the snippet for `eval "$(oops init zsh)"`.
+    # `oops init zsh|bash|fish`: prints the snippet for `eval "$(oops init zsh)"`.
     def self.init(args, stdout:, stderr:)
       supported = ShellInit::SHELLS.join(", ")
       if args.size != 1

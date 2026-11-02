@@ -22,7 +22,8 @@ class ShellInitIntegrationTest < Minitest::Test
              # (group-writable dirs on fpath) it stops at an "insecure directories" prompt.
              "skip_global_compinit" => "1" }
     %w[OOPS_TTY OOPS_SESSION OOPS_DISABLE __OOPS_SEQ __OOPS_PID ZDOTDIR PROMPT_COMMAND BASH_ENV ENV
-       HISTCONTROL HISTFILE].each { |name| @env[name] = nil }
+       HISTCONTROL HISTFILE __OOPS_GHOSTTY XDG_DATA_DIRS XDG_DATA_HOME
+       GHOSTTY_SHELL_INTEGRATION_XDG_DIR].each { |name| @env[name] = nil }
     @prompts = 0
   end
 
@@ -49,12 +50,28 @@ class ShellInitIntegrationTest < Minitest::Test
     File.write("#{@home}/.zshrc", "#{snippet_line('zsh')}#{after}PS1='[st=%?]%% '\n")
   end
 
+  # fish has no prompt string variable; fish_prompt is a function. The empty
+  # greeting keeps the banner off the screen.
+  def write_fish_config(before: "", after: "")
+    dir = "#{@home}/cfg/fish"
+    FileUtils.mkdir_p(dir)
+    File.write("#{dir}/config.fish", "#{before}'#{EXE}' init fish | source\n#{after}" \
+                                     "function fish_prompt; printf '[st=%s]$ ' $status; end\n" \
+                                     "function fish_greeting; end\n")
+  end
+
   def spawn_shell(*argv, prompt: true)
     @r, @w, @pid = PTY.spawn(@env, *argv, chdir: @home)
     @r.winsize = [24, 80]
     @out = +""
     @reader = Thread.new do
-      loop { @out << @r.readpartial(4096) }
+      loop do
+        chunk = @r.readpartial(4096)
+        @out << chunk
+        # fish 4 waits for the terminal's answer to this query (Primary
+        # Device Attributes) before its first prompt; answer as a VT220.
+        @w.write("\e[?62;22c") if chunk.include?("\e[0c") || chunk.include?("\e[c")
+      end
     rescue StandardError
       nil
     end
@@ -115,6 +132,10 @@ class ShellInitIntegrationTest < Minitest::Test
     skip "zsh not installed" unless system("which zsh > /dev/null")
   end
 
+  def skip_without_fish
+    skip "fish not installed" unless system("which fish > /dev/null")
+  end
+
   # --- bash ---
 
   def test_bash_copies_command_counts_from_the_recorded_shell
@@ -122,18 +143,18 @@ class ShellInitIntegrationTest < Minitest::Test
     check_command_counts("bash")
   end
 
-  def check_command_counts(shell)
+  def check_command_counts(shell, exit_two: "(exit 2)")
     FileUtils.mkdir_p("#{@home}/cfg/oops")
     File.write("#{@home}/cfg/oops/config.yml", "clipboard: \"cat > #{@home}/clip\"\n")
     spawn_shell(shell, "-i")
     assert_equal 1, run_line("echo first; false")
     assert_equal 0, run_line("echo second")
-    assert_equal 2, run_line("echo third; (exit 2)")
+    assert_equal 2, run_line("echo third; #{exit_two}")
     assert_equal 0, run_line("'#{EXE}' -n 2")
-    assert_equal "```\n$ echo second\nsecond\n\n$ echo third; (exit 2)\nthird\n(exit 2)\n```\n",
+    assert_equal "```\n$ echo second\nsecond\n\n$ echo third; #{exit_two}\nthird\n(exit 2)\n```\n",
                  File.read("#{@home}/clip")
     assert_equal 0, run_line("'#{EXE}' err -n 2")
-    assert_equal "```\n$ echo first; false\nfirst\n(exit 1)\n\n$ echo third; (exit 2)\nthird\n(exit 2)\n```\n",
+    assert_equal "```\n$ echo first; false\nfirst\n(exit 1)\n\n$ echo third; #{exit_two}\nthird\n(exit 2)\n```\n",
                  File.read("#{@home}/clip")
   end
 
@@ -444,6 +465,112 @@ class ShellInitIntegrationTest < Minitest::Test
     assert_empty session_logs
   end
 
+  # --- fish ---
+
+  def test_fish_copies_command_counts_from_the_recorded_shell
+    skip_without_fish
+    write_fish_config
+    check_command_counts("fish", exit_two: "sh -c 'exit 2'")
+  end
+
+  def test_fish_config_snippet_records_commands_with_exit_and_cwd
+    skip_without_fish
+    write_fish_config
+    spawn_shell("fish", "-i")
+    assert_equal 1, run_line("echo hello; false")
+    FileUtils.mkdir_p("#{@home}/sub dir")
+    run_line(%(cd "sub dir"))
+    assert_equal 4, run_line("pwd >/dev/null; sh -c 'exit 4'")
+    run_line("")
+    run_line("   ")
+
+    assert_equal 1, session_logs.size
+    hello, cd, four = records
+    assert_equal 3, records.size
+    assert_equal ["echo hello; false", 1], [hello.cmd, hello.exit]
+    assert_includes hello.output, "hello\r\n"
+    assert_same_dir @home, hello.cwd
+    assert_equal [%(cd "sub dir"), 0], [cd.cmd, cd.exit]
+    assert_equal ["pwd >/dev/null; sh -c 'exit 4'", 4], [four.cmd, four.exit]
+    assert_same_dir "#{@home}/sub dir", four.cwd
+    assert_equal [1, 2, 3], records.map(&:seq)
+    refute_includes @out, "\e_oops;"
+  end
+
+  def test_fish_command_text_round_trips
+    skip_without_fish
+    write_fish_config
+    spawn_shell("fish", "-i")
+    cmd = %(echo "it's ü \\$HOME ;" 'x"y'; begin\necho second line\nend)
+    run_line(cmd)
+    assert_equal [cmd], records.map(&:cmd)
+    assert_includes records.first.output, "it's ü $HOME ; x\"y\r\nsecond line\r\n".b
+  end
+
+  def test_fish_markers_do_not_go_into_redirected_output
+    skip_without_fish
+    write_fish_config
+    spawn_shell("fish", "-i")
+    run_line("begin; echo grp; end > out.txt; echo done")
+    assert_equal "grp\n", File.read("#{@home}/out.txt")
+    assert_equal "begin; echo grp; end > out.txt; echo done", records.first.cmd
+    assert_includes records.first.output, "done\r\n"
+  end
+
+  def test_fish_nested_shells_on_the_same_tty_are_not_recorded_twice
+    skip_without_fish
+    write_fish_config
+    spawn_shell("fish", "-i")
+    run_line("exec fish")
+    run_line("echo inner")
+    run_line("fish")
+    run_line("echo child")
+    run_line("exit")
+    run_line("echo parent")
+    assert_equal 1, session_logs.size
+    assert_equal ["exec fish", "echo inner", "fish", "echo child", "exit", "echo parent"], records.map(&:cmd)
+    assert_equal 0, records[0].exit
+    assert_includes records[1].output, "inner\r\n"
+    assert_includes records[3].output, "child\r\n"
+    assert_includes records[5].output, "parent\r\n"
+  end
+
+  def test_fish_dash_c_and_scripts_run_without_restart
+    skip_without_fish
+    write_fish_config
+    spawn_shell("fish", "-ic", "echo RAN-C; exit 7", prompt: false)
+    assert_equal 7, shell_exit_status
+    assert_includes @out, "RAN-C"
+    File.write("#{@home}/script.fish", "echo RAN-SCRIPT; exit 8\n")
+    spawn_shell("fish", "-i", "script.fish", prompt: false)
+    assert_equal 8, shell_exit_status
+    assert_includes @out, "RAN-SCRIPT"
+    assert_empty session_logs
+  end
+
+  def test_fish_login_shell_is_restarted_as_login_shell
+    skip_without_fish
+    write_fish_config(before: "set -gx PATH #{ENV.fetch('PATH').split(':').map { "'#{_1}'" }.join(' ')}\n")
+    spawn_shell("fish", "-l")
+    run_line("status is-login; and echo login-yes")
+    assert_equal 1, session_logs.size
+    assert_includes records.first.output, "login-yes\r\n"
+  end
+
+  def test_fish_keeps_working_when_oops_is_missing
+    skip_without_fish
+    write_fish_config
+    File.write("#{@home}/cfg/fish/config.fish",
+               "#{Oops::ShellInit.snippet('fish', bin: "#{@home}/gone/oops")}\n" \
+               "function fish_prompt; printf '[st=%s]$ ' $status; end\nfunction fish_greeting; end\n")
+    spawn_shell("fish", "-i")
+    run_line("echo alive-(math 1 + 1)")
+    assert_match(/alive-2/, @out)
+    assert_includes @out, "oops: cannot run #{@home}/gone/oops; recording disabled"
+    assert_empty session_logs
+    refute_includes @out, "\e_oops;"
+  end
+
   # --- zsh plugin file (for plugin managers) ---
 
   PLUGIN = File.expand_path("../../oops.plugin.zsh", __dir__)
@@ -546,6 +673,63 @@ class ShellInitIntegrationTest < Minitest::Test
     write_zshrc
     spawn_shell("zsh", "-i")
     run_line("echo recorded-$((1+1))")
+    assert_equal 1, session_logs.size
+    assert_equal 0, ghostty_loads
+  end
+
+  # A stand-in for Ghostty's fish integration. Like the real one it is
+  # injected through XDG_DATA_DIRS as a vendor_conf.d file, removes the
+  # injection again, and defines __ghostty_setup, which runs on the first
+  # prompt. It logs every shell that loads it.
+  def install_fake_fish_ghostty
+    data = "#{@home}/ghostty/shell-integration"
+    FileUtils.mkdir_p("#{data}/fish/vendor_conf.d")
+    File.write("#{data}/fish/vendor_conf.d/ghostty-shell-integration.fish", <<~FISH)
+      set -l keep
+      for d in (string split : -- "$XDG_DATA_DIRS")
+          test "$d" = "$GHOSTTY_SHELL_INTEGRATION_XDG_DIR"; or set -a keep $d
+      end
+      set -gx XDG_DATA_DIRS (string join : -- $keep)
+      set -e GHOSTTY_SHELL_INTEGRATION_XDG_DIR
+      status is-interactive; or return
+      function __ghostty_setup --on-event fish_prompt
+          functions -e __ghostty_setup
+      end
+      echo "loaded $fish_pid" >> "#{@home}/ghostty.log"
+    FISH
+    data
+  end
+
+  def test_fish_recorded_shell_loads_ghosttys_integration_again
+    skip_without_fish
+    dir = install_fake_fish_ghostty
+    @env.update("XDG_DATA_DIRS" => dir, "GHOSTTY_SHELL_INTEGRATION_XDG_DIR" => dir,
+                "GHOSTTY_RESOURCES_DIR" => "#{@home}/ghostty")
+    write_fish_config
+    spawn_shell("fish", "-i")
+    run_line("echo recorded")
+    assert_equal 1, session_logs.size, "the tab should be recorded"
+    assert_equal 2, ghostty_loads, "outer and restarted shell should each have loaded the integration"
+  end
+
+  def test_fish_recorded_shell_does_not_load_ghosttys_integration_when_it_is_off
+    skip_without_fish
+    install_fake_fish_ghostty
+    @env["GHOSTTY_RESOURCES_DIR"] = "#{@home}/ghostty"
+    write_fish_config
+    spawn_shell("fish", "-i")
+    run_line("echo recorded")
+    assert_equal 1, session_logs.size
+    assert_equal 0, ghostty_loads
+  end
+
+  def test_fish_stale_flag_does_not_load_ghosttys_integration
+    skip_without_fish
+    install_fake_fish_ghostty
+    @env.update("GHOSTTY_RESOURCES_DIR" => "#{@home}/ghostty", "__OOPS_GHOSTTY" => "1")
+    write_fish_config
+    spawn_shell("fish", "-i")
+    run_line("echo recorded")
     assert_equal 1, session_logs.size
     assert_equal 0, ghostty_loads
   end
