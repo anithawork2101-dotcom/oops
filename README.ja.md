@@ -21,7 +21,13 @@
 gem install oops-cli
 ```
 
-Homebrew tap: 準備中です。
+Homebrew でも入れられます。
+
+```sh
+brew install ysb3996-blip/oops/oops
+```
+
+Homebrew 版は Homebrew の Ruby で oops を動かすので、`PATH` の先に古い Ruby があっても動きます。
 
 macOS または Linux（WSL は Linux 扱い）、Ruby 3.3 以降、zsh または bash が必要です。実行時に依存する gem はありません。
 

@@ -21,7 +21,13 @@ What lands on your clipboard is a code block with the command, its output, and t
 gem install oops-cli
 ```
 
-Homebrew tap: coming soon.
+Or with Homebrew:
+
+```sh
+brew install ysb3996-blip/oops/oops
+```
+
+The Homebrew formula runs oops with Homebrew's own Ruby, so it works even if an older Ruby comes first on your `PATH`.
 
 Requires Ruby 3.3 or newer on macOS or Linux (WSL counts as Linux), and zsh or bash. There are no runtime gem dependencies.
 
