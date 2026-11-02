@@ -2,7 +2,7 @@
 
 [English](README.md) | 日本語
 
-[![Gem Version](https://img.shields.io/gem/v/oops-cli)](https://rubygems.org/gems/oops-cli) [![CI](https://github.com/ysb3996-blip/oops/actions/workflows/ci.yml/badge.svg)](https://github.com/ysb3996-blip/oops/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![All Contributors](https://img.shields.io/github/all-contributors/ysb3996-blip/oops?color=ee8449)](#貢献してくれた人たち)
+[![Gem Version](https://img.shields.io/gem/v/oops-cli)](https://rubygems.org/gems/oops-cli) [![CI](https://github.com/ysb3996-blip/oops/actions/workflows/ci.yml/badge.svg)](https://github.com/ysb3996-blip/oops/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![codecov](https://codecov.io/gh/ysb3996-blip/oops/graph/badge.svg)](https://codecov.io/gh/ysb3996-blip/oops) [![All Contributors](https://img.shields.io/github/all-contributors/ysb3996-blip/oops?color=ee8449)](#貢献してくれた人たち)
 
 直前のシェルコマンドとその出力を、貼り付けられる形でクリップボードにコピーします。
 
