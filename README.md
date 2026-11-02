@@ -31,6 +31,8 @@ The Homebrew formula runs oops with Homebrew's own Ruby, so it works even if an 
 
 Requires Ruby 3.3 or newer on macOS or Linux (WSL counts as Linux), and zsh or bash. There are no runtime gem dependencies.
 
+`gem install` puts oops into the Ruby that is active at that moment; each Ruby version has its own gems. With rbenv, asdf or mise, a tab that uses another Ruby gives a `command not found` error for `oops`, also when the shell starts. The fix that always works is to run `gem install oops-cli` again under the active Ruby (with rbenv, follow with `rbenv rehash`). Outside directories that pin a Ruby with `.ruby-version`, `.tool-versions` or `mise.toml`, you can instead set the Ruby you installed into as your global Ruby (for example `rbenv global 3.3.5`).
+
 ### With a zsh plugin manager
 
 For zsh you can load oops as a plugin instead. It runs oops from the cloned repository, so there is no gem to install (Ruby 3.3 or newer is still needed), and the plugin replaces the rc line below.
