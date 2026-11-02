@@ -2,6 +2,10 @@
 
 [English](CHANGELOG.md) | 日本語
 
+## 未リリース
+
+- zsh のプラグインマネージャー（antidote・zinit・Oh My Zsh など）向けに `oops.plugin.zsh` を追加。clone したリポジトリの oops を動かすので、gem のインストールはいりません。
+
 ## 0.2.0 - 2026-11-01
 
 - `oops status` を追加。`recording`・`paused`・`off` のどれかを 1 行で出力し、記録中のときだけ終了コード 0 を返します。プロンプトやスクリプトから、このシェルが記録されているか確認できます。

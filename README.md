@@ -25,6 +25,30 @@ Homebrew tap: coming soon.
 
 Requires Ruby 3.3 or newer on macOS or Linux (WSL counts as Linux), and zsh or bash. There are no runtime gem dependencies.
 
+### With a zsh plugin manager
+
+For zsh you can load oops as a plugin instead. It runs oops from the cloned repository, so there is no gem to install (Ruby 3.3 or newer is still needed), and the plugin replaces the rc line below.
+
+```sh
+# antidote: add to ~/.zsh_plugins.txt
+ysb3996-blip/oops
+
+# zinit: in ~/.zshrc, without `wait` (turbo mode)
+zinit light ysb3996-blip/oops
+
+# Oh My Zsh: clone, then add oops to plugins=(...) in ~/.zshrc
+git clone https://github.com/ysb3996-blip/oops "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/oops"
+
+# No plugin manager: clone, then add the source line to ~/.zshrc
+git clone https://github.com/ysb3996-blip/oops ~/.oops
+source ~/.oops/oops.plugin.zsh
+```
+
+- Load it right away, not deferred (zinit `wait`, zsh-defer). The plugin starts your shell again under the recorder, which should happen before the first prompt.
+- The notes on where the line goes (below) apply to where the plugin is loaded. With powerlevel10k's instant prompt, the plugin has to be loaded above the instant prompt block, which plugin managers usually are not; use the rc line there.
+- If the Ruby on `PATH` is too old, the shell prints `oops: ... init zsh failed (oops needs Ruby 3.3 or later); recording disabled` and starts as usual, without recording.
+- Plugin managers update from the `main` branch, which can be ahead of the latest release.
+
 ## Set up your shell
 
 Add one line to your rc file (`~/.zshrc` for zsh, `~/.bashrc` for bash; if you keep your bash setup in `~/.bash_profile` on macOS, put it there):

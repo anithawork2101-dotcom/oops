@@ -444,6 +444,47 @@ class ShellInitIntegrationTest < Minitest::Test
     assert_empty session_logs
   end
 
+  # --- zsh plugin file (for plugin managers) ---
+
+  PLUGIN = File.expand_path("../../oops.plugin.zsh", __dir__)
+  EXE_DIR = File.dirname(EXE)
+
+  def write_plugin_zshrc
+    File.write("#{@home}/.zshrc", "source '#{PLUGIN}'\nPS1='[st=%?]%% '\n")
+  end
+
+  def test_zsh_plugin_file_records_with_the_oops_next_to_it
+    skip_without_zsh
+    write_plugin_zshrc
+    spawn_shell("zsh", "-i")
+    assert_equal 1, run_line("echo hello; false")
+    run_line("whence -p oops")
+    # The recorded shell sources the plugin again; exe/ is on PATH only once.
+    run_line(%(echo n=$(print -rl -- $path | grep -cxF '#{EXE_DIR}')))
+
+    assert_equal ["echo hello; false", 1], [records.first.cmd, records.first.exit]
+    assert records[1].output.start_with?("#{EXE}\r\n"), records[1].output.inspect
+    assert records[2].output.start_with?("n=1\r\n"), records[2].output.inspect
+  end
+
+  # Ruby on PATH too old for oops: init fails, so the shell must not be
+  # restarted under oops record (that would close the tab) but run as usual.
+  def test_zsh_plugin_keeps_the_shell_when_init_fails
+    skip_without_zsh
+    FileUtils.mkdir_p("#{@home}/bin")
+    File.write("#{@home}/bin/ruby", "#!/bin/sh\necho 'old ruby' >&2\nexit 1\n")
+    File.chmod(0o755, "#{@home}/bin/ruby")
+    @env["PATH"] = "#{@home}/bin:#{@env['PATH']}"
+    write_plugin_zshrc
+    spawn_shell("zsh", "-i")
+    run_line("echo alive-$((1+1))")
+
+    assert_match(/alive-2/, @out)
+    assert_includes @out, "oops: #{EXE} init zsh failed (oops needs Ruby 3.3 or later); recording disabled"
+    refute_includes @out, "old ruby"
+    assert_empty session_logs
+  end
+
   # --- terminal shell integration (Ghostty) ---
 
   # A stand-in for Ghostty's zsh integration. Like the real one it is injected
