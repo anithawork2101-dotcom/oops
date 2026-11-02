@@ -29,7 +29,7 @@ brew install ysb3996-blip/oops/oops
 
 Homebrew 版は Homebrew の Ruby で oops を動かすので、`PATH` の先に古い Ruby があっても動きます。
 
-macOS または Linux（WSL は Linux 扱い）、Ruby 3.3 以降、zsh または bash が必要です。実行時に依存する gem はありません。
+macOS または Linux（WSL は Linux 扱い）、Ruby 3.3 以降、zsh・bash・fish のどれかが必要です。実行時に依存する gem はありません。
 
 `gem install` は、そのとき有効な Ruby にだけ oops を入れます。gem は Ruby のバージョンごとに別々です。rbenv・asdf・mise などで別の Ruby を使うタブでは、`oops` が `command not found` のエラーになります（シェルの起動時にも出ます）。いつでも使える直し方は、有効な Ruby で `gem install oops-cli` をもう一度実行することです（rbenv なら続けて `rbenv rehash`）。`.ruby-version`・`.tool-versions`・`mise.toml` で Ruby を指定しているディレクトリの外では、代わりにインストールした Ruby を標準（グローバル）の Ruby に設定することもできます（例: `rbenv global 3.3.5`）。
 
@@ -66,14 +66,21 @@ eval "$(oops init zsh)"    # zsh
 eval "$(oops init bash)"   # bash
 ```
 
-そのあと新しいタブを開いてください。開いているタブでは `exec zsh`（bash なら `exec bash`）で反映されます。
+fish では、`~/.config/fish/config.fish` に次の 1 行を足します。
+
+```fish
+oops init fish | source
+```
+
+そのあと新しいタブを開いてください。開いているタブでは `exec zsh`（bash なら `exec bash`、fish なら `exec fish`）で反映されます。
 
 この行を置く場所が重要です。
 
 - oops の入った Ruby を `PATH` に通す設定（rbenv、asdf、mise、Homebrew の `shellenv` など）より**後ろ**に置きます。macOS ではログインシェルが `PATH` をリセットするため、この行が先にあるとシステムの Ruby 2.6 が選ばれて oops が起動しないことがあります。oops が動かなくてもシェル自体は普通に起動します。記録されないだけです。
 - 2 回実行したくない重い処理や出力の多い処理（nvm、プロンプトテーマ、バナーなど）より**前**に置きます。このスニペットは、小さな記録用プログラム（`oops record`、pty 中継）の下でシェルをもう一度起動します。そのため、この行より上は外側のシェルと内側のシェルで 2 回実行され、下は内側のシェルでだけ実行されます。
 - powerlevel10k を使う場合は、`~/.zshrc` の先頭にある instant prompt のブロックより**上**に置きます。instant prompt は `~/.zshrc` の残りを読む間、シェルの入出力をリダイレクトし、その間スニペットは何もしません（実際の端末でだけ動作するため）。すると oops は黙って記録しなくなります。`~/.zshrc` に行があるのにタブが記録されないときは `oops doctor` を実行してください。`recording: no` と表示されます。
-- zsh ではシェルがログインシェルではない形で再起動されます。`~/.zlogin` にだけ書いた設定は、記録されるシェルには適用されません。`~/.zprofile` か `~/.zshrc`（この行より上）に置いてください。bash ではログインシェルは `-l` 付きで再起動されます。
+- zsh ではシェルがログインシェルではない形で再起動されます。`~/.zlogin` にだけ書いた設定は、記録されるシェルには適用されません。`~/.zprofile` か `~/.zshrc`（この行より上）に置いてください。bash ではログインシェルは `-l` 付きで、fish では `--login` 付きで再起動されます。
+- fish は最初のプロンプトを出す直前に再起動されます。そのため、行をどこに置いても、`config.fish` 全体が外側と記録される側の両方で実行されます（もっと早く再起動すると、プロンプトを出さない `fish -i -c` や `fish -i script.fish` まで再起動してしまうためです）。
 
 おかしいと感じたら `oops doctor` を実行します。このタブが記録されているか、シェルとフックの読み込み状況、使われるクリップボードの方法、設定ファイル、セッションログのサイズ、Ruby のバージョンを報告します。
 
@@ -87,7 +94,7 @@ eval "$(oops init bash)"   # bash
 | `oops 3` / `oops -n 3` | 直前の 3 コマンドを（古い順に）1 つのコードブロックとしてコピーする |
 | `oops err` | 終了コードが 0 以外だった直近のコマンドをコピーする（成功したコマンドは飛ばす） |
 | `oops err -n 2` | 直近の失敗した 2 コマンドを古い順にコピーする（成功したコマンドは飛ばす） |
-| `oops init zsh` / `oops init bash` | シェルのスニペットを出力する（`eval` 用） |
+| `oops init zsh` / `oops init bash` / `oops init fish` | シェルのスニペットを出力する（`eval` 用。fish は `\| source`） |
 | `oops doctor` | 記録・フック・クリップボード・設定・ログサイズを診断する |
 | `oops pause` / `oops resume` | 記録を止める／再開する。停止中は何もディスクに書かれない |
 | `oops status` | `recording`・`paused`・`off` のどれかを 1 行で出力する（スクリプトやプロンプト向け） |
@@ -204,9 +211,9 @@ clipboard: auto     # auto | pbcopy | wl-copy | xclip | xsel | clip.exe | osc52 
 
 ![oops の仕組み: 録音機があなたとシェルの間にいて、コマンドはディスク上のノートに書かれ、oops と打つと最後のページを秘密を隠して写し、どこにでも貼れる](docs/how-it-works.ja.svg)
 
-1. `oops init` は、rc ファイルから `eval` するスニペットを出力します。まだ記録されていない端末の対話シェルでは、シェルを `oops record` の下で再起動します。
+1. `oops init` は、rc ファイルから `eval` する（fish では `| source` する）スニペットを出力します。まだ記録されていない端末の対話シェルでは、シェルを `oops record` の下で再起動します。
 2. `oops record` は、Ruby 製の小さな pty 中継です。キー入力とシェルの出力をそのまま通し、ウィンドウのリサイズをシェルに伝えます。
-3. シェルのフック（zsh は `preexec`/`precmd`、bash は `DEBUG` トラップと `PROMPT_COMMAND`）が、各コマンドの前後に目に見えない APC マーカーを出力します。中継がそれを取り除くので、端末には見えません。
+3. シェルのフック（zsh は `preexec`/`precmd`、bash は `DEBUG` トラップと `PROMPT_COMMAND`、fish は `fish_preexec`/`fish_postexec` イベント）が、各コマンドの前後に目に見えない APC マーカーを出力します。中継がそれを取り除くので、端末には見えません。
 4. コマンドが終わるたびに、中継は 1 行の JSON（コマンド、ディレクトリ、時刻、終了コード、生の出力）をタブごとのログに追記します。置き場所は `${XDG_STATE_HOME:-~/.local/state}/oops/sessions/` です。出力は 1 コマンドあたり 1 MB まで（末尾を残す）。各タブのログは 50 MB までで、超えると新しいコマンドだけを残して書き直されます（約 37 MiB まで縮む）。タブが記録を始めるとき、閉じたタブのログは古い順に、全ログの合計が 50 MB 以下になるまで削除されます。開いているタブのログは削除されないので、忙しいタブが複数あると合計がそれを超えることがあります。
 5. `oops` は現在のタブのログの末尾を読み、テキストを整えてマスクし、コードブロックを組み立ててクリップボードに渡します。コマンドを再実行することはありません。
 
@@ -226,16 +233,16 @@ clipboard: auto     # auto | pbcopy | wl-copy | xclip | xsel | clip.exe | osc52 
 - vim・less・tmux などの全画面アプリの出力は保存されず、`[full-screen app output omitted]` に置き換わります。
 - スペースで始まるコマンドラインは、zsh では記録されますが bash では記録されません（bash はそれを履歴に保存せず、oops はコマンドを履歴から読むため）。
 - [bash-preexec](https://github.com/rcaloras/bash-preexec) を使う bash（atuin や Ghostty の bash 統合の背後にあるものも含む）: oops は自前の `DEBUG` トラップを使わず、bash-preexec にフックを登録します。rc ファイルでどちらが先でも同じです。bash が履歴に保存しなかった行（`HISTCONTROL=ignorespace`、`HISTIGNORE`）は、この場合 `(not saved in history)` と記録されます。行のテキストを履歴から読むためです。bash-preexec がない場合、oops はそのような行の最初のコマンドを記録します。
-- Ghostty 上の bash: Ghostty のシェル統合（プロンプトマーク、同じディレクトリでの新しいタブ、タイトル）は外側のシェルにだけ入るため、記録される側のシェルには入りません。足し戻すには、`~/.bashrc` の oops の行の下に次の行を置きます（bash 3.2 で確認済み）: `[ -n "$GHOSTTY_RESOURCES_DIR" ] && source "$GHOSTTY_RESOURCES_DIR/shell-integration/bash/ghostty.bash"`。zsh は何もしなくて構いません。スニペットがやります。
+- Ghostty 上の bash: Ghostty のシェル統合（プロンプトマーク、同じディレクトリでの新しいタブ、タイトル）は外側のシェルにだけ入るため、記録される側のシェルには入りません。足し戻すには、`~/.bashrc` の oops の行の下に次の行を置きます（bash 3.2 で確認済み）: `[ -n "$GHOSTTY_RESOURCES_DIR" ] && source "$GHOSTTY_RESOURCES_DIR/shell-integration/bash/ghostty.bash"`。zsh と fish は何もしなくて構いません。スニペットがやります。
 - bash: パイプラインの次の行では、`PIPESTATUS` に最後の終了ステータスしか入りません（`false | true` の後に `echo ${PIPESTATUS[*]}` を実行すると、`1 0` ではなく `0` と表示されます）。oops の `PROMPT_COMMAND` の項目が先に実行されるためです。`$?` と `$_` は保たれます。パイプラインの各ステータスを表示するプロンプト（starship の `pipestatus`）は、bash では表示が少なくなります。zsh は `pipestatus` を保ちます。
 - macOS: `pbcopy` は文字エンコーディングを `LANG` / `LC_*` から決めます。日本語などの非 ASCII 文字が文字化けして届くときは、UTF-8 のロケール（例: `LANG=en_US.UTF-8`）が設定されているか確認してください。SSH 越しで起動したシェルでは設定されていないことがあります。
-- fish とネイティブ Windows にはまだ対応していません。
+- ネイティブ Windows にはまだ対応していません。
 
 ## 開発
 
 ### 手元の環境を整える
 
-Git、Ruby 3.3 以降、[Bundler](https://bundler.io/)（Ruby に付属）、そして zsh と bash の両方が必要です（エンドツーエンドのテストが本物のシェルを起動するため）。macOS には zsh と bash が入っています。Debian / Ubuntu では `sudo apt-get install zsh` を実行します。
+Git、Ruby 3.3 以降、[Bundler](https://bundler.io/)（Ruby に付属）、そして zsh と bash の両方が必要です（エンドツーエンドのテストが本物のシェルを起動するため）。macOS には zsh と bash が入っています。Debian / Ubuntu では `sudo apt-get install zsh` を実行します。fish はなくても構いません。入っていなければ fish のエンドツーエンドのテストは飛ばされます（CI では入れています）。
 
 ```sh
 git clone https://github.com/ysb3996-blip/oops.git
@@ -280,7 +287,7 @@ rbenv rehash                         # rbenv を使う場合のみ
 
 作業中の端末で `oops record` を実行しないでください。テストは自前の pty を通して動かします。試すときは、新しい端末タブを使います。試した結果として残るログを消すには、「プライバシーとセキュリティ」を参照してください。
 
-テストは、書式、秘密情報のマスク、ログの読み取り、ストリームパーサー、そして実際の zsh と bash を使った中継のエンドツーエンド実行を対象にしています。
+テストは、書式、秘密情報のマスク、ログの読み取り、ストリームパーサー、そして実際の zsh・bash・fish を使った中継のエンドツーエンド実行を対象にしています。
 
 リリース前の手動チェックリスト:
 
