@@ -2,6 +2,10 @@
 
 English | [日本語](CHANGELOG.ja.md)
 
+## Unreleased
+
+- `oops.plugin.zsh` for zsh plugin managers (antidote, zinit, Oh My Zsh, ...). It runs oops from the cloned repository, so no gem install is needed.
+
 ## 0.2.0 - 2026-11-01
 
 - `oops status` prints `recording`, `paused` or `off` on one line and exits 0 only when recording, so a prompt or script can show whether this shell is recorded.

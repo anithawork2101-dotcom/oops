@@ -25,6 +25,30 @@ Homebrew tap: 準備中です。
 
 macOS または Linux（WSL は Linux 扱い）、Ruby 3.3 以降、zsh または bash が必要です。実行時に依存する gem はありません。
 
+### zsh のプラグインマネージャーで入れる
+
+zsh なら、プラグインとして読み込むこともできます。clone したリポジトリの oops をそのまま動かすので、gem のインストールはいりません（Ruby 3.3 以上は必要です）。下の「シェルの設定」の 1 行の代わりになります。
+
+```sh
+# antidote: ~/.zsh_plugins.txt に追加
+ysb3996-blip/oops
+
+# zinit: ~/.zshrc に。`wait`（turbo モード）は付けない
+zinit light ysb3996-blip/oops
+
+# Oh My Zsh: clone してから ~/.zshrc の plugins=(...) に oops を追加
+git clone https://github.com/ysb3996-blip/oops "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/oops"
+
+# プラグインマネージャーなし: clone してから ~/.zshrc に source の行を追加
+git clone https://github.com/ysb3996-blip/oops ~/.oops
+source ~/.oops/oops.plugin.zsh
+```
+
+- 読み込みを後回しにしないでください（zinit の `wait`、zsh-defer など）。プラグインはシェルを記録用に起動し直すので、最初のプロンプトより前に済ませる必要があります。
+- 下の「シェルの設定」にある、行を置く場所の注意は、プラグインを読み込む場所にそのまま当てはまります。powerlevel10k の instant prompt を使っている場合、プラグインは instant prompt のブロックより上で読み込む必要がありますが、プラグインマネージャーはふつうそうなりません。その場合は rc ファイルの 1 行を使ってください。
+- `PATH` の Ruby が古いと、`oops: ... init zsh failed (oops needs Ruby 3.3 or later); recording disabled` と出て、記録なしで普通に起動します。
+- プラグインマネージャーは `main` ブランチから更新するので、最新のリリースより先の内容になることがあります。
+
 ## シェルの設定
 
 rc ファイルに 1 行足します（zsh は `~/.zshrc`、bash は `~/.bashrc`。macOS で bash の設定を `~/.bash_profile` に置いているなら、そちらに書きます）。
