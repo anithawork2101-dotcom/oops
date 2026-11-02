@@ -31,6 +31,8 @@ Homebrew 版は Homebrew の Ruby で oops を動かすので、`PATH` の先に
 
 macOS または Linux（WSL は Linux 扱い）、Ruby 3.3 以降、zsh・bash・fish のどれかが必要です。実行時に依存する gem はありません。
 
+macOS の Terminal.app・iTerm2・Ghostty・VS Code の統合ターミナルで、手で動作を確かめています。ほかの端末でおかしな動きがあれば、issue で教えてください。
+
 `gem install` は、そのとき有効な Ruby にだけ oops を入れます。gem は Ruby のバージョンごとに別々です。rbenv・asdf・mise などで別の Ruby を使うタブでは、`oops` が `command not found` のエラーになります（シェルの起動時にも出ます）。いつでも使える直し方は、有効な Ruby で `gem install oops-cli` をもう一度実行することです（rbenv なら続けて `rbenv rehash`）。`.ruby-version`・`.tool-versions`・`mise.toml` で Ruby を指定しているディレクトリの外では、代わりにインストールした Ruby を標準（グローバル）の Ruby に設定することもできます（例: `rbenv global 3.3.5`）。
 
 ### zsh のプラグインマネージャーで入れる
@@ -294,7 +296,7 @@ rbenv rehash                         # rbenv を使う場合のみ
 
 リリース前の手動チェックリスト:
 
-- Ghostty、Terminal.app、VS Code の統合ターミナルで、マーカーのゴミが表示されない。
+- Ghostty、Terminal.app、iTerm2、VS Code の統合ターミナルで、マーカーのゴミが表示されない。
 - vim、less、全画面の端末アプリが、ウィンドウをリサイズしても追従する。
 - 記録中のタブで `exec zsh` しても、2 つ目の記録が始まらない。
 - 記録中のタブから `code .` で開いた VS Code のターミナルが、独立して記録される。
