@@ -31,7 +31,7 @@ Homebrew 版は Homebrew の Ruby で oops を動かすので、`PATH` の先に
 
 macOS または Linux（WSL は Linux 扱い）、Ruby 3.3 以降、zsh または bash が必要です。実行時に依存する gem はありません。
 
-`gem install` は、そのとき有効な Ruby にだけ oops を入れます。gem は Ruby のバージョンごとに別々です。rbenv・asdf・mise などで別の Ruby を使うタブでは `command not found` になります（シェルの起動時には `oops: command not found` と出ます）。その Ruby でも `gem install oops-cli` を実行するか（rbenv なら続けて `rbenv rehash`）、インストールした Ruby を標準（グローバル）の Ruby に設定してください（例: `rbenv global 3.3.5`）。
+`gem install` は、そのとき有効な Ruby にだけ oops を入れます。gem は Ruby のバージョンごとに別々です。rbenv・asdf・mise などで別の Ruby を使うタブでは、`oops` が `command not found` のエラーになります（シェルの起動時にも出ます）。いつでも使える直し方は、有効な Ruby で `gem install oops-cli` をもう一度実行することです（rbenv なら続けて `rbenv rehash`）。`.ruby-version`・`.tool-versions`・`mise.toml` で Ruby を指定しているディレクトリの外では、代わりにインストールした Ruby を標準（グローバル）の Ruby に設定することもできます（例: `rbenv global 3.3.5`）。
 
 ### zsh のプラグインマネージャーで入れる
 
