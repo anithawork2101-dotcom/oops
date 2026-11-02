@@ -2,7 +2,7 @@
 
 English | [日本語](CHANGELOG.ja.md)
 
-## Unreleased
+## 0.3.0 - 2026-11-02
 
 - `oops clear` deletes the logs of closed tabs, and `oops clear --all` also empties the current tab's log ([#42](https://github.com/ysb3996-blip/oops/issues/42)).
 - Changed: logs of closed tabs are now deleted 7 days after their last command, when a tab starts recording. Set `retention_days` in the config to change the number of days, or `retention_days: false` to keep them until the 50 MB limit ([#42](https://github.com/ysb3996-blip/oops/issues/42)).
