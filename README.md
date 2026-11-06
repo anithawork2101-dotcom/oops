@@ -285,7 +285,7 @@ gem install ./oops-cli-0.3.0.gem     # the file name follows lib/oops/version.rb
 rbenv rehash                         # only with rbenv
 ```
 
-- A gem is installed per Ruby version. If a new tab uses another Ruby than the one you installed into (for example the repository pins 4.0.9, but your global Ruby is 3.3.5), the shell cannot find oops when it starts (bash prints `bash: oops: command not found`, zsh prints `command not found: oops`). Run `gem install` again under that Ruby, e.g. `RBENV_VERSION=3.3.5 gem install ./oops-cli-0.3.0.gem`.
+- For details on gem installation across Ruby versions, see [Install](#install). To try the gem with another Ruby version, run `RBENV_VERSION=3.3.5 gem install ./oops-cli-0.3.0.gem`.
 - Reinstall after every change. The installed gem is a copy, not a link to your checkout.
 - To remove it: `gem uninstall oops-cli`.
 - Put `eval "$(oops init zsh)"` in your rc file, not just at the prompt: the recorded shell reads the rc file again, and without the line it has no hooks (`oops doctor` shows `hooks: missing`).
